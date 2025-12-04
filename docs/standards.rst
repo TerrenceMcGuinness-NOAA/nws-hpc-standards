@@ -1,5 +1,15 @@
 .. _introduction:
 
+.. MCP Document-Level Semantic Annotations
+.. These RST comments are invisible in rendered docs but parsed by MCP ingester
+.. SME can add annotations anywhere using .. mcp:<directive>:: format
+
+.. mcp:compliance:: ee2_standards_document
+   :priority: critical
+   :type: authoritative
+   :scope: global
+   :description: Official NCEP EE2 Implementation Standards for WCOSS operations
+
 Introduction
 ============
 
@@ -185,6 +195,38 @@ See `Appendix A: Workflow Examples`_ for examples of these utilities in use.
 *startmsg and postmsg are no longer required in operations but the utilities will continue to be maintained.
 
 ``err_chk`` / ``err_exit``
+
+.. MCP Semantic Annotations - Invisible to RTD, parsed by MCP ingester
+.. These annotations capture operational intent for AI-assisted guidance
+
+.. mcp:compliance:: error_handling
+   :priority: critical
+   :type: mandatory
+   :scope: global
+
+.. mcp:intent:: rapid_error_detection
+   :description: Enable immediate error detection and job abort on failure
+   :enforcement: runtime_check
+   :rationale: 99% on-time delivery SLA requires catching failures immediately to prevent cascade failures across 6-hour forecast window
+
+.. mcp:utility:: err_chk
+   :module: prod_util
+   :category: error-handling
+   :required: yes
+   :deprecated: no
+
+.. mcp:utility:: err_exit
+   :module: prod_util
+   :category: error-handling
+   :required: yes
+   :deprecated: no
+
+.. mcp:anti_pattern:: explicit_exit_statements
+   :severity: must_not
+   :context: operational_scripts
+   :sme_justification: NCO SPA guidance - scripts must return naturally to workflow
+   :rationale: Explicit exit 0/exit 1 prevents proper ecFlow/PBS error propagation
+
   It is imperative that all production code and scripts broadly employ error checking to catch and recover from errors as quickly as possible.
   The context of the error must be communicated as descriptively as possible and prefaced with “WARNING:” or “FATAL ERROR:”.
   Failures must not be allowed to propagate downstream of the point where the problem can first be detected;
@@ -584,6 +626,30 @@ Any sub-scripts to the ``ex-script`` will be located in the ``ush`` subdirectory
 Underscores are permitted in all file names.
 
 Please also observe the following points:
+
+.. MCP Semantic Annotations for debug logging requirement
+
+.. mcp:compliance:: script_debug_logging
+   :priority: critical
+   :type: mandatory
+   :category: code_standards
+
+.. mcp:intent:: enable_debug_trace
+   :description: All shell scripts must enable debug logging with set -x
+   :enforcement: syntax_check
+   :rationale: Provides execution trace for troubleshooting operational failures within 5-minute SLA
+
+.. mcp:correct_pattern:: ee2_script_header
+   :language: bash
+   :context: operational_scripts
+   :severity: must
+   :ee2_section: Standards Section C
+
+.. mcp:anti_pattern:: adding_set_e_or_set_eu
+   :severity: must_not
+   :context: operational_scripts
+   :sme_justification: Not present in EE2 standards - AI false positive
+   :rationale: EE2 uses err_chk/err_exit for error handling, not shell error traps
 
 * Enable debug logging at the top of *each* shell script:
     .. code-block:: bash
