@@ -191,6 +191,79 @@ Variables that are not used in a given job need not be defined (keep the ``J-job
 B. File Name Conventions
 ------------------------
 
+.. MCP Semantic Annotations for File Naming Conventions
+.. These annotations enable LLM-based "semantic compilation" - pattern recognition without shell tools
+
+.. mcp:compliance:: file_naming_conventions
+   :priority: critical
+   :type: mandatory
+   :scope: global
+   :description: EE2 file naming standards for WCOSS production
+
+.. mcp:ai_guidance_rule:: llm_file_naming_validation
+   :priority: critical
+   :enforcement: semantic_analysis
+   :description: Use LLM pattern recognition to validate file naming without external tools
+   :methodology: Deep code mind-sweep using internal reasoning, not shell commands
+   :rationale: LLMs can recognize naming patterns faster than grep/find for compliance checks
+   :capability: Infer model name, cycle, forecast hour, domain, format from filename structure
+   :capability: Detect uppercase chars, special chars, embedded dates (violations)
+   :capability: Validate period vs underscore usage (categories vs words)
+   :capability: Check forecast hour padding (f006 not f6)
+   :capability: Verify resolution notation (0p25 not 0.25)
+
+.. mcp:file_naming_pattern:: script_naming
+   :j_job: J{NET}_{STEP}_{COMPONENT} (all uppercase, underscores)
+   :ex_script: ex{net}_{step}_{component}_{run}.sh (all lowercase, underscores)
+   :ush_script: {descriptive_name}.sh or {descriptive_name}.py (lowercase, underscores)
+   :example_j_job: JEVS_STATS_GLOBAL_DET, JEVS_PREP_CAM, JEVS_PLOTS_RTOFS
+   :example_ex_script: exevs_stats_global_det_atmos_grid2grid.sh
+   :example_ush_script: global_det_atmos_prep.py
+
+.. mcp:file_naming_pattern:: output_naming
+   :non_ensemble_atmos: model.tHHz.var_info.f###.domain.format
+   :ensemble_atmos: model.tHHz.ens_mem.var_info.f###.domain.format
+   :coupled_model: model.component.tHHz.var_info.f###.domain.format
+   :hurricane: model.tHHz.storm_name.var_info.f###.domain.format
+   :wmo_format: format.model.tHHz.awp_var_info.f###.domain
+
+.. mcp:file_naming_rule:: separator_convention
+   :severity: must
+   :rule: Use periods (.) to separate categories
+   :rule: Use underscores (_) to separate words within same category
+   :valid_example: gefs.t06z.pres_avg.0p50.f006.grib2
+   :invalid_example: gefs_t06z_pres-avg_0.50_f6.grib2
+
+.. mcp:file_naming_rule:: resolution_notation
+   :severity: must
+   :rule: Use 'p' for decimal point in resolution (0p25 not 0.25)
+   :rule: Include leading zero for resolutions less than 1
+   :valid_example: 0p25, 0p50, 2p5km
+   :invalid_example: 0.25, .25, 2.5km
+
+.. mcp:file_naming_rule:: forecast_hour_notation
+   :severity: must
+   :rule: Prefix forecast hours with 'f'
+   :rule: Pad forecast hours to consistent width (f006 not f6)
+   :rule: Use 'tm' prefix for pre-cycle time (analysis minus hours)
+   :valid_example: f006, f024, f120, tm06
+   :invalid_example: 006, f6, hr024
+
+.. mcp:file_naming_rule:: prohibited_elements
+   :severity: must_not
+   :rule: No uppercase characters in output filenames
+   :rule: No special characters except period and underscore
+   :rule: No embedded dates (date belongs in directory path)
+   :rule: No $job, $envir, or $model_ver in output filenames
+   :invalid_example: GFS.t00z.f006.grib2, model_20251204.grib2, gfs-output.grib2
+
+.. mcp:llm_validation_prompt:: file_naming_check
+   :description: Prompt template for LLM-based file naming validation
+   :instruction: Analyze the following filename(s) against EE2 naming conventions
+   :check_list: uppercase_chars, special_chars, embedded_dates, separator_usage, resolution_format, forecast_hour_format, category_structure
+   :output_format: For each file, report COMPLIANT or list specific violations with rule reference
+   :reasoning_mode: Use pattern matching and semantic understanding, not regex execution
+
 Standard file naming conventions must also be used.
 File names must not contain special characters, uppercase characters or the date (the directory in which the file resides will contain the date).
 File names must indicate the name of the model run, the cycle, the type of data the file contains, the resolution of the data (if applicable), other data related elements, the three-digit forecast hour the data represents (if applicable), and the file type.
