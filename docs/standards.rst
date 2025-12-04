@@ -10,6 +10,38 @@
    :scope: global
    :description: Official NCEP EE2 Implementation Standards for WCOSS operations
 
+.. MCP AI Guidance Rules - Control AI recommendation behavior
+.. These rules reduce false positives by constraining AI to literal EE2 requirements
+
+.. mcp:ai_guidance_rule:: literal_compliance
+   :priority: critical
+   :enforcement: all_queries
+   :description: Only recommend changes explicitly stated in EE2 documentation
+   :rule: Do NOT add improvements or best practices beyond EE2 requirements
+   :rule: Do NOT combine or extend EE2 requirements with general shell scripting advice
+   :rule: Do NOT infer requirements from partial patterns
+   :false_positive_reduction: 60-80%
+
+.. mcp:ai_guidance_rule:: context_discrimination
+   :priority: critical
+   :enforcement: all_queries
+   :description: Apply different requirements based on script context
+   :operational_job: Strict EE2 compliance, NCO SPA guidance, NO explicit exits
+   :utility_script: EE2 variable standards, more flexibility in error handling
+   :test_script: General shell standards apply, EE2 restrictions do NOT apply
+
+.. mcp:ai_guidance_rule:: anti_pattern_enforcement
+   :priority: critical
+   :enforcement: code_analysis
+   :description: Flag anti-pattern usage as compliance violation
+   :action: Reference SME justification in error message
+   :action: Provide corrected alternative from mcp:correct_pattern
+
+.. mcp:context_types::
+   :operational_job: Scripts in jobs/ (J-jobs) or scripts/ex* (ex-scripts) - strict EE2
+   :utility_script: Scripts in ush/ subdirectory - EE2 variables, flexible error handling
+   :test_script: Scripts in tests/ or dev areas - general standards, no EE2 restrictions
+
 Introduction
 ============
 
@@ -66,6 +98,41 @@ They must be used wherever appropriate. In the production environment, the varia
 Several are set by loading the ``prod_envir`` module.
 Developers should likewise have a job card for each job which loads any required modules and sets these variables to the correct values prior to calling the ``J-job``.
 Variables that are not used in a given job need not be defined (keep the ``J-job`` clutter-free!).
+
+.. MCP Semantic Annotations for Environment Variables
+
+.. mcp:compliance:: environment_variables
+   :priority: critical
+   :type: mandatory
+   :category: environment_variables
+   :platforms: hera,hercules,orion,wcoss2,gaea
+
+.. mcp:intent:: environment_validation
+   :description: All production scripts must validate required environment variables before execution
+   :enforcement: runtime_check
+   :rationale: Missing environment variables cause silent failures that are difficult to diagnose
+
+.. mcp:sme_guidance:: required_variable_validation
+   :severity: must
+   :description: Scripts must exit with non-zero status if required variables are undefined or empty
+   :critical_variables: COMROOT, DATAROOT, cyc, PDY, NET, RUN
+   :validation_pattern: Check with ${VAR:?} or explicit test before proceeding
+
+.. mcp:guidance:: hera_environment
+   :platform: hera
+   :description: Hera-specific environment setup
+   :COMROOT: /scratch1/NCEPDEV/global/glopara/com
+   :DATAROOT: /scratch1/NCEPDEV/stmp2/$USER
+   :modulefiles: /scratch1/NCEPDEV/global/glopara/modulefiles
+   :best_practice: Use err_chk utility, set OMP_STACKSIZE=2048M for OpenMP apps
+
+.. mcp:guidance:: wcoss2_environment
+   :platform: wcoss2
+   :description: WCOSS2 production environment setup
+   :COMROOT: /lfs/h1/ops/prod/com
+   :DATAROOT: /lfs/h2/emc/ptmp/$USER
+   :utilscript: /lfs/h1/ops/prod/libs/ush
+   :utilexec: /lfs/h1/ops/prod/libs/exec
 
 **Table 1: A list of the standard environment variables**
 
@@ -226,6 +293,73 @@ See `Appendix A: Workflow Examples`_ for examples of these utilities in use.
    :context: operational_scripts
    :sme_justification: NCO SPA guidance - scripts must return naturally to workflow
    :rationale: Explicit exit 0/exit 1 prevents proper ecFlow/PBS error propagation
+
+.. MCP SME Corrections - Critical fixes for AI false positives
+.. These corrections address systematic errors in AI-generated recommendations
+
+.. mcp:sme_correction:: forced_exit_prohibition
+   :date: 2025-11-19
+   :severity: critical
+   :false_positive_rate: 60%
+   :ai_incorrect: Add exit 0 and exit 1 statements throughout scripts
+   :sme_correction: Forced exits are explicitly prohibited by NCO SPAs
+   :rationale: NCO SPAs specifically asked EVS team to remove exit statements
+   :evidence: Explicit exits prevent proper workflow error propagation
+
+.. mcp:correct_pattern:: natural_return_with_err_utilities
+   :language: bash
+   :context: operational_job
+   :severity: must
+   :ee2_section: Section C Production Utilities
+   :description: Use err_chk after critical operations, err_exit for fatal errors, natural script return
+   :example_err_chk: export err=$?; err_chk
+   :example_err_exit: err_exit "FATAL ERROR: Required file $required_file not found"
+
+.. mcp:sme_validation:: err_utilities_correct
+   :date: 2025-11-19
+   :status: validated
+   :description: AI correctly identifies err_chk and err_exit usage
+   :action: No changes needed for err_chk/err_exit recommendations
+
+.. MCP err_chk Pattern Recognition - For gap detection in compliance analysis
+
+.. mcp:correct_pattern:: err_chk_after_critical_operations
+   :category: error_handling
+   :severity: required
+   :ee2_section: Error Handling Utilities
+   :description: After every critical operation, immediately capture exit status and call err_chk
+   :critical_operations: cp, mv, ln, rm, gen_vx_mask, ncks, ncrcat, cdo, wgrib2, python scripts, MET tools
+   :pattern: command; export err=$?; err_chk
+
+.. mcp:anti_pattern:: cp_mv_without_err_chk
+   :category: error_handling
+   :severity: must_fix
+   :false_positive_rate: 5%
+   :sme_justification: File operations can fail silently due to disk space, permissions, network issues
+   :rationale: Without err_chk, script continues with missing/incomplete data causing downstream failures
+   :context: operational_scripts
+
+.. mcp:ai_guidance_rule:: recognize_err_chk_gaps_not_absence
+   :category: error_handling
+   :priority: high
+   :applies_to: scan_repository_compliance, analyze_ee2_compliance
+   :level_1_compliant: File consistently uses err_chk after ALL critical operations - mark compliant
+   :level_2_partial: File uses err_chk in some places but missing in others - report specific gaps with line numbers
+   :level_3_absent: File has NO err_chk usage despite critical operations - report as non-compliant
+
+.. mcp:ai_guidance_rule:: cite_compliant_examples_for_context
+   :category: error_handling
+   :priority: medium
+   :applies_to: generate_compliance_report, explain_workflow_component
+   :description: When recommending fixes, cite existing compliant files as positive examples
+   :action: Reference compliant files from same repository to provide actionable guidance
+
+.. mcp:ai_guidance_rule:: report_compliance_distribution
+   :category: error_handling
+   :priority: high
+   :applies_to: scan_repository_compliance, generate_compliance_report
+   :description: Show distribution across three compliance levels, not binary compliant/non-compliant
+   :metrics: Level 1 (Fully Compliant), Level 2 (Partial/Gaps), Level 3 (Non-Compliant)
 
   It is imperative that all production code and scripts broadly employ error checking to catch and recover from errors as quickly as possible.
   The context of the error must be communicated as descriptively as possible and prefaced with “WARNING:” or “FATAL ERROR:”.
@@ -650,6 +784,25 @@ Please also observe the following points:
    :context: operational_scripts
    :sme_justification: Not present in EE2 standards - AI false positive
    :rationale: EE2 uses err_chk/err_exit for error handling, not shell error traps
+
+.. mcp:sme_correction:: bash_error_handling_requirement
+   :date: 2025-11-19
+   :severity: critical
+   :false_positive_rate: 80%
+   :ai_incorrect: Missing set -eu in scripts
+   :sme_correction_1: set -eu is NOT in EE2 standards
+   :sme_correction_2: set -e is NOT required in operational scripts
+   :sme_correction_3: Adding -u (undefined variable check) is NOT mandated by EE2
+   :sme_correction_4: Only set -x is shown in EE2 examples for debug logging
+   :evidence: Examples 8 and 9 in Appendix A show set -x only, no set -e or set -eu
+   :root_cause: AI conflating general shell scripting best practices with EE2 operational requirements
+
+.. mcp:validation:: env_variable_test_criteria
+   :category: environment_variables
+   :test_1: Script must exit with code 1 if required variable is missing
+   :test_2: Script must treat empty strings as undefined and fail validation
+   :test_3: Error messages must clearly identify which variable failed
+   :test_4: Non-zero exit code must be returned on validation failure
 
 * Enable debug logging at the top of *each* shell script:
     .. code-block:: bash
